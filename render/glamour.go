@@ -21,7 +21,10 @@ const (
 // wraps the bullet with ANSI color codes based on the temperature value.
 // This is needed because glamour strips ANSI codes from markdown table cells.
 func colorTempBullets(output string) string {
-	re := regexp.MustCompile(`(● )(\d{1,3})°C`)
+	// Match the bullet, followed by optional ANSI codes, then a space,
+	// then optional ANSI codes, then the temperature.
+	// Example: ●\x1b[0m\x1b[38;5;252m 42°C
+	re := regexp.MustCompile(`●((?:\x1b\[[0-9;]*m)*\s+(?:\x1b\[[0-9;]*m)*)(\d{1,3})°C`)
 	return re.ReplaceAllStringFunc(output, func(match string) string {
 		groups := re.FindStringSubmatch(match)
 		if len(groups) < 3 {
@@ -40,7 +43,8 @@ func colorTempBullets(output string) string {
 			color = ansiGreen
 		}
 
-		return fmt.Sprintf("%s●%s %s°C", color, ansiReset, groups[2])
+		// Preserve the "glue" (ANSI codes and space) between the bullet and the temp.
+		return fmt.Sprintf("%s●%s%s%s°C", color, ansiReset, groups[1], groups[2])
 	})
 }
 
