@@ -4,10 +4,18 @@ import (
 	"context"
 	"fmt"
 	"os/exec"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
 )
+
+// SoftwareInfo holds NVIDIA software version info (driver, CUDA runtime, nvcc).
+type SoftwareInfo struct {
+	Driver string
+	CUDA   string
+	NVCC   string
+}
 
 // GPU holds info gathered from a single GPU.
 type GPU struct {
@@ -23,8 +31,8 @@ type GPU struct {
 }
 
 // Query runs nvidia-smi once to gather all GPU metrics, returning the parsed
-// GPU slice and the driver version string.
-func Query() ([]GPU, string, error) {
+// GPU slice and NVIDIA software version info (driver, CUDA, nvcc).
+func Query() ([]GPU, SoftwareInfo, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -48,19 +56,19 @@ func Query() ([]GPU, string, error) {
 	cmd := exec.CommandContext(ctx, "nvidia-smi", queryArgs...)
 	out, err := cmd.Output()
 	if err != nil {
-		return nil, "", fmt.Errorf("nvidia-smi: %w", err)
+		return nil, SoftwareInfo{}, fmt.Errorf("nvidia-smi: %w", err)
 	}
 
 	lines := splitTrimLines(string(out))
 	if len(lines) == 0 {
-		return nil, "", fmt.Errorf("nvidia-smi returned no output")
+		return nil, SoftwareInfo{}, fmt.Errorf("nvidia-smi returned no output")
 	}
 
 	gpus := make([]GPU, 0, len(lines))
 	for _, line := range lines {
 		fields := strings.Split(line, ",")
 		if len(fields) < len(attrs) {
-			return nil, "", fmt.Errorf("nvidia-smi: expected %d fields, got %d in line: %q", len(attrs), len(fields), line)
+			return nil, SoftwareInfo{}, fmt.Errorf("nvidia-smi: expected %d fields, got %d in line: %q", len(attrs), len(fields), line)
 		}
 
 		idx, _ := strconv.Atoi(strings.TrimSpace(fields[0]))
@@ -85,14 +93,28 @@ func Query() ([]GPU, string, error) {
 		})
 	}
 
-	// Driver version — separate lightweight call.
+	// Software versions — separate lightweight calls.
+	sw := SoftwareInfo{}
+
 	driver, err := queryDriver(ctx)
 	if err != nil {
-		// Non-fatal: we still have GPU data.
 		driver = "unknown"
 	}
+	sw.Driver = driver
 
-	return gpus, driver, nil
+	cuda, err := queryCUDA(ctx)
+	if err != nil {
+		cuda = "unknown"
+	}
+	sw.CUDA = cuda
+
+	nvcc, err := queryNVCC(ctx)
+	if err != nil {
+		nvcc = "not installed"
+	}
+	sw.NVCC = nvcc
+
+	return gpus, sw, nil
 }
 
 func queryDriver(ctx context.Context) (string, error) {
@@ -156,6 +178,40 @@ func (g GPU) BusID() string {
 		}
 	}
 	return strings.Join(parts, ":")
+}
+
+// queryCUDA extracts the CUDA version from the nvidia-smi header line.
+// nvidia-smi --query-gpu=cuda_version is not supported, so we parse the banner.
+func queryCUDA(ctx context.Context) (string, error) {
+	cmd := exec.CommandContext(ctx, "nvidia-smi")
+	out, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+
+	re := regexp.MustCompile(`CUDA Version:\s*([\d.]+)`)
+	matches := re.FindSubmatch(out)
+	if len(matches) < 2 {
+		return "", fmt.Errorf("could not parse CUDA version from nvidia-smi output")
+	}
+	return string(matches[1]), nil
+}
+
+// queryNVCC runs nvcc --version and extracts the compiler release version.
+// Returns an error if nvcc is not found (CUDA Toolkit not installed).
+func queryNVCC(ctx context.Context) (string, error) {
+	cmd := exec.CommandContext(ctx, "nvcc", "--version")
+	out, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+
+	re := regexp.MustCompile(`release ([\d.]+)`)
+	matches := re.FindSubmatch(out)
+	if len(matches) < 2 {
+		return "", fmt.Errorf("could not parse nvcc version from output")
+	}
+	return string(matches[1]), nil
 }
 
 func splitTrimLines(s string) []string {

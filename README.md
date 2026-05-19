@@ -29,6 +29,14 @@ Outputs a formatted table with:
 | Power | Current draw / power limit |
 | Display | 🖥️ if display is active |
 
+Plus a **Software** section showing:
+
+| Component | Source |
+|-----------|--------|
+| Driver | `nvidia-smi` driver version |
+| CUDA | CUDA runtime version (max supported by driver) |
+| nvcc | CUDA compiler version ("not installed" if CUDA Toolkit absent) |
+
 ## Installation
 
 ```bash

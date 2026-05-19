@@ -20,7 +20,7 @@ func main() {
 	}
 	flag.Parse()
 
-	gpus, driver, err := gpu.Query()
+	gpus, sw, err := gpu.Query()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "gpu-info: %v\n", err)
 		os.Exit(1)
@@ -32,7 +32,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "gpu-info: lspci: %v (proceeding)\n", err)
 	}
 
-	md := render.BuildMarkdown(gpus, makerCache, driver)
+	md := render.BuildMarkdown(gpus, makerCache, sw)
 
 	output, err := render.Render(md, *style, *width)
 	if err != nil {

@@ -8,7 +8,7 @@ import (
 )
 
 // BuildMarkdown produces the markdown table from GPU data.
-func BuildMarkdown(gpus []gpu.GPU, makerCache map[int]string, driver string) string {
+func BuildMarkdown(gpus []gpu.GPU, makerCache map[int]string, sw gpu.SoftwareInfo) string {
 	var sb strings.Builder
 
 	sb.WriteString("## 🖥️ GPU Overview\n\n")
@@ -36,7 +36,12 @@ func BuildMarkdown(gpus []gpu.GPU, makerCache map[int]string, driver string) str
 		))
 	}
 
-	sb.WriteString(fmt.Sprintf("\n> **Driver:** `%s`\n", driver))
+	sb.WriteString("\n## 📦 Software\n\n")
+	sb.WriteString(fmt.Sprintf("| Component | Version |\n"))
+	sb.WriteString("|:-|:-:|\n")
+	sb.WriteString(fmt.Sprintf("| **Driver** | `%s` |\n", sw.Driver))
+	sb.WriteString(fmt.Sprintf("| **CUDA** | `%s` |\n", sw.CUDA))
+	sb.WriteString(fmt.Sprintf("| **nvcc** | `%s` |\n", sw.NVCC))
 
 	return sb.String()
 }
