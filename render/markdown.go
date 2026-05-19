@@ -32,8 +32,8 @@ func BuildMarkdown(gpus []gpu.GPU, makerCache map[int]string, sw gpu.SoftwareInf
 	}
 
 	sb.WriteString("\n## 🔧 Hardware\n\n")
-	sb.WriteString("| GPU | Model | Maker | Compute Cap | Display |\n")
-	sb.WriteString("|:-:|:--|:-:|:-:|:-:|\n")
+	sb.WriteString("| GPU | Model | Maker | Compute Cap | Display | PCIe |\n")
+	sb.WriteString("|:-:|:--|:-:|:-:|:-:|:--|\n")
 
 	for _, g := range gpus {
 		maker := makerCache[g.Index]
@@ -45,12 +45,13 @@ func BuildMarkdown(gpus []gpu.GPU, makerCache map[int]string, sw gpu.SoftwareInf
 			cc = "N/A"
 		}
 		sb.WriteString(fmt.Sprintf(
-			"| **%d** | %s | %s | %s | %s |\n",
+			"| **%d** | %s | %s | %s | %s | %s |\n",
 			g.Index,
 			g.Name,
 			maker,
 			cc,
 			g.DisplayBadge(),
+			g.PCIDisplay(),
 		))
 	}
 

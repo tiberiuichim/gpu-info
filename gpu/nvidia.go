@@ -19,20 +19,24 @@ type SoftwareInfo struct {
 
 // GPU holds info gathered from a single GPU.
 type GPU struct {
-	Index         int
-	Name          string
-	MemoryTotalMB int
-	MemoryUsedMB  int
-	MemoryFreeMB  int
-	TemperatureC  int
-	FanSpeed      int
-	Utilization   int
-	PowerDrawW    int
-	PowerLimitW   int
-	PState        string
-	DisplayActive bool
-	ComputeCap    string
-	PCIBusID      string
+	Index           int
+	Name            string
+	MemoryTotalMB   int
+	MemoryUsedMB    int
+	MemoryFreeMB    int
+	TemperatureC    int
+	FanSpeed        int
+	Utilization     int
+	PowerDrawW      int
+	PowerLimitW     int
+	PState          string
+	DisplayActive   bool
+	ComputeCap      string
+	PCILinkWidthCur int
+	PCILinkWidthMax int
+	PCILinkGenCur   int
+	PCILinkGenMax   int
+	PCIBusID        string
 }
 
 // Query runs nvidia-smi once to gather all GPU metrics, returning the parsed
@@ -56,6 +60,10 @@ func Query() ([]GPU, SoftwareInfo, error) {
 		"pstate",
 		"display_active",
 		"compute_cap",
+		"pcie.link.width.current",
+		"pcie.link.width.max",
+		"pcie.link.gen.current",
+		"pcie.link.gen.max",
 		"pci.bus_id",
 	}
 	queryArgs := []string{
@@ -92,23 +100,31 @@ func Query() ([]GPU, SoftwareInfo, error) {
 		powerLimitF, _ := strconv.ParseFloat(strings.TrimSpace(fields[9]), 32)
 		pstate := strings.TrimSpace(fields[10])
 		computeCap := strings.TrimSpace(fields[12])
-		busID := strings.TrimSpace(fields[13])
+		linkWidthCur, _ := strconv.Atoi(strings.TrimSpace(fields[13]))
+		linkWidthMax, _ := strconv.Atoi(strings.TrimSpace(fields[14]))
+		linkGenCur, _ := strconv.Atoi(strings.TrimSpace(fields[15]))
+		linkGenMax, _ := strconv.Atoi(strings.TrimSpace(fields[16]))
+		busID := strings.TrimSpace(fields[17])
 
 		gpus = append(gpus, GPU{
-			Index:         idx,
-			Name:          cleanName(fields[1]),
-			MemoryTotalMB: memTotal,
-			MemoryUsedMB:  memUsed,
-			MemoryFreeMB:  memFree,
-			TemperatureC:  temp,
-			FanSpeed:      fan,
-			Utilization:   util,
-			PowerDrawW:    int(powerDrawF),
-			PowerLimitW:   int(powerLimitF),
-			PState:        pstate,
-			DisplayActive: strings.TrimSpace(strings.ToLower(fields[11])) == "enabled",
-			ComputeCap:    computeCap,
-			PCIBusID:      busID,
+			Index:           idx,
+			Name:            cleanName(fields[1]),
+			MemoryTotalMB:   memTotal,
+			MemoryUsedMB:    memUsed,
+			MemoryFreeMB:    memFree,
+			TemperatureC:    temp,
+			FanSpeed:        fan,
+			Utilization:     util,
+			PowerDrawW:      int(powerDrawF),
+			PowerLimitW:     int(powerLimitF),
+			PState:          pstate,
+			DisplayActive:   strings.TrimSpace(strings.ToLower(fields[11])) == "enabled",
+			ComputeCap:      computeCap,
+			PCILinkWidthCur: linkWidthCur,
+			PCILinkWidthMax: linkWidthMax,
+			PCILinkGenCur:   linkGenCur,
+			PCILinkGenMax:   linkGenMax,
+			PCIBusID:        busID,
 		})
 	}
 
@@ -197,6 +213,19 @@ func (g GPU) DisplayBadge() string {
 		return "🖥️"
 	}
 	return ""
+}
+
+// PCIDisplay returns the current/max PCIe link info (e.g. "x16 Gen4 / x16 Gen4").
+func (g GPU) PCIDisplay() string {
+	cur := fmt.Sprintf("x%d Gen%d", g.PCILinkWidthCur, g.PCILinkGenCur)
+	max := fmt.Sprintf("x%d Gen%d", g.PCILinkWidthMax, g.PCILinkGenMax)
+	if cur == "x0 Gen0" {
+		cur = "N/A"
+	}
+	if max == "x0 Gen0" {
+		max = "N/A"
+	}
+	return fmt.Sprintf("%s / %s", cur, max)
 }
 
 // normalizeBusID strips leading zeros from the PCI bus ID so it matches lspci output.

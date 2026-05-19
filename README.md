@@ -38,6 +38,7 @@ Outputs three sections:
 | Maker | lspci subsystem vendor (ASUS, MSI, ZOTAC, etc.) |
 | Compute Cap | NVIDIA compute capability (e.g. 8.6 = Ampere) |
 | Display | 🖥️ if display is active |
+| PCIe | `pcie.link.width.current` / `pcie.link.width.max` (e.g. "x8 Gen4 / x16 Gen4") |
 
 ### Software
 
