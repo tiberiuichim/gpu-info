@@ -16,20 +16,30 @@ nvidia-smi | glow --style dark
 gpu-info
 ```
 
-Outputs a formatted table with:
+Outputs three sections:
+
+### GPU Overview
 
 | Column | Source |
 |--------|--------|
 | GPU | nvidia-smi index |
 | Model | GPU name (stripped of "NVIDIA GeForce" prefix) |
-| Maker | lspci subsystem vendor (ASUS, MSI, ZOTAC, etc.) |
-| VRAM | Total memory in GB |
-| Temp | Temperature with emoji indicator (🟢 <70°C, 🟡 70-79°C, 🔴 ≥80°C) |
+| Mem | Used / total memory in GB |
+| Temp | Temperature with bullet indicator (🟢 <70°C, 🟡 70-79°C, 🔴 ≥80°C) |
+| Fan | Fan speed % |
 | Util | GPU utilization % |
-| Power | Current draw / power limit |
+| PState | Performance state (P0 = max perf, P12 = min perf) |
+| Power | Current draw / power limit in watts |
+
+### Hardware
+
+| Column | Source |
+|--------|--------|
+| Maker | lspci subsystem vendor (ASUS, MSI, ZOTAC, etc.) |
+| Compute Cap | NVIDIA compute capability (e.g. 8.6 = Ampere) |
 | Display | 🖥️ if display is active |
 
-Plus a **Software** section showing:
+### Software
 
 | Component | Source |
 |-----------|--------|

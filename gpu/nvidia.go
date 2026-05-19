@@ -22,11 +22,16 @@ type GPU struct {
 	Index         int
 	Name          string
 	MemoryTotalMB int
+	MemoryUsedMB  int
+	MemoryFreeMB  int
 	TemperatureC  int
+	FanSpeed      int
 	Utilization   int
 	PowerDrawW    int
 	PowerLimitW   int
+	PState        string
 	DisplayActive bool
+	ComputeCap    string
 	PCIBusID      string
 }
 
@@ -41,11 +46,16 @@ func Query() ([]GPU, SoftwareInfo, error) {
 		"index",
 		"name",
 		"memory.total",
+		"memory.used",
+		"memory.free",
 		"temperature.gpu",
+		"fan.speed",
 		"utilization.gpu",
 		"power.draw",
 		"power.limit",
+		"pstate",
 		"display_active",
+		"compute_cap",
 		"pci.bus_id",
 	}
 	queryArgs := []string{
@@ -72,23 +82,32 @@ func Query() ([]GPU, SoftwareInfo, error) {
 		}
 
 		idx, _ := strconv.Atoi(strings.TrimSpace(fields[0]))
-		memMB, _ := strconv.Atoi(strings.TrimSpace(fields[2]))
-		temp, _ := strconv.Atoi(strings.TrimSpace(fields[3]))
-		util, _ := strconv.Atoi(strings.TrimSpace(fields[4]))
-		powerDraw, _ := strconv.Atoi(strings.TrimSpace(fields[5]))
-		powerLimit, _ := strconv.Atoi(strings.TrimSpace(fields[6]))
-
-		busID := strings.TrimSpace(fields[8])
+		memTotal, _ := strconv.Atoi(strings.TrimSpace(fields[2]))
+		memUsed, _ := strconv.Atoi(strings.TrimSpace(fields[3]))
+		memFree, _ := strconv.Atoi(strings.TrimSpace(fields[4]))
+		temp, _ := strconv.Atoi(strings.TrimSpace(fields[5]))
+		fan, _ := strconv.Atoi(strings.TrimSpace(fields[6]))
+		util, _ := strconv.Atoi(strings.TrimSpace(fields[7]))
+		powerDrawF, _ := strconv.ParseFloat(strings.TrimSpace(fields[8]), 32)
+		powerLimitF, _ := strconv.ParseFloat(strings.TrimSpace(fields[9]), 32)
+		pstate := strings.TrimSpace(fields[10])
+		computeCap := strings.TrimSpace(fields[12])
+		busID := strings.TrimSpace(fields[13])
 
 		gpus = append(gpus, GPU{
 			Index:         idx,
 			Name:          cleanName(fields[1]),
-			MemoryTotalMB: memMB,
+			MemoryTotalMB: memTotal,
+			MemoryUsedMB:  memUsed,
+			MemoryFreeMB:  memFree,
 			TemperatureC:  temp,
+			FanSpeed:      fan,
 			Utilization:   util,
-			PowerDrawW:    powerDraw,
-			PowerLimitW:   powerLimit,
-			DisplayActive: strings.TrimSpace(strings.ToLower(fields[7])) == "enabled",
+			PowerDrawW:    int(powerDrawF),
+			PowerLimitW:   int(powerLimitF),
+			PState:        pstate,
+			DisplayActive: strings.TrimSpace(strings.ToLower(fields[11])) == "enabled",
+			ComputeCap:    computeCap,
 			PCIBusID:      busID,
 		})
 	}
@@ -136,10 +155,24 @@ func cleanName(raw string) string {
 	return name
 }
 
-// MemoryGB converts MiB to a clean GB string (e.g. 24576 → "24 GB").
-func (g GPU) MemoryGB() string {
-	gb := g.MemoryTotalMB / 1024
-	return fmt.Sprintf("%d GB", gb)
+// MemoryDisplay returns "used/total GB" (e.g. "22/24 GB").
+func (g GPU) MemoryDisplay() string {
+	usedGB := g.MemoryUsedMB / 1024
+	totalGB := g.MemoryTotalMB / 1024
+	return fmt.Sprintf("%d/%d GB", usedGB, totalGB)
+}
+
+// FanDisplay returns fan speed with a percentage sign.
+func (g GPU) FanDisplay() string {
+	return fmt.Sprintf("%d%%", g.FanSpeed)
+}
+
+// PStateDisplay returns the performance state string.
+func (g GPU) PStateDisplay() string {
+	if g.PState == "" {
+		return "N/A"
+	}
+	return g.PState
 }
 
 // TemperatureBadge returns the temperature string with a bullet indicator.
