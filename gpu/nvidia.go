@@ -120,16 +120,10 @@ func (g GPU) MemoryGB() string {
 	return fmt.Sprintf("%d GB", gb)
 }
 
-// TemperatureBadge returns the temperature string with an emoji indicator.
+// TemperatureBadge returns the temperature string with a bullet indicator.
+// Colors are applied post-render since glamour strips ANSI codes from markdown.
 func (g GPU) TemperatureBadge() string {
-	switch {
-	case g.TemperatureC >= 80:
-		return fmt.Sprintf("%d°C 🔴", g.TemperatureC)
-	case g.TemperatureC >= 70:
-		return fmt.Sprintf("%d°C 🟡", g.TemperatureC)
-	default:
-		return fmt.Sprintf("%d°C 🟢", g.TemperatureC)
-	}
+	return fmt.Sprintf("● %d°C", g.TemperatureC)
 }
 
 // PowerDisplay returns "drawW / limitW".
