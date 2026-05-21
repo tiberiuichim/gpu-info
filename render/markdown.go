@@ -32,7 +32,7 @@ func BuildMarkdown(gpus []gpu.GPU, makerCache map[int]string, sw gpu.SoftwareInf
 	}
 
 	sb.WriteString("\n## 🔧 Hardware\n\n")
-	sb.WriteString("| GPU | Model | Maker | Compute Cap | Display | PCIe |\n")
+	sb.WriteString("| GPU | Model | Maker | Compute Cap | 🖥️ | PCIe |\n")
 	sb.WriteString("|:-:|:--|:-:|:-:|:-:|:--|\n")
 
 	for _, g := range gpus {
@@ -59,8 +59,8 @@ func BuildMarkdown(gpus []gpu.GPU, makerCache map[int]string, sw gpu.SoftwareInf
 	sb.WriteString(fmt.Sprintf("| Component | Version |\n"))
 	sb.WriteString("|:-|:-:|\n")
 	sb.WriteString(fmt.Sprintf("| **Driver** | `%s` |\n", sw.Driver))
-	sb.WriteString(fmt.Sprintf("| **CUDA** | `%s` |\n", sw.CUDA))
-	sb.WriteString(fmt.Sprintf("| **nvcc** | `%s` |\n", sw.NVCC))
+	sb.WriteString(fmt.Sprintf("| **CUDA Runtime** | `%s` |\n", sw.CUDA))
+	sb.WriteString(fmt.Sprintf("| **CUDA Toolkit** | `%s` |\n", sw.NVCC))
 
 	return sb.String()
 }

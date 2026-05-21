@@ -3,7 +3,9 @@ package gpu
 import (
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -207,10 +209,10 @@ func (g GPU) UtilizationDisplay() string {
 	return fmt.Sprintf("%d%%", g.Utilization)
 }
 
-// DisplayBadge returns a monitor emoji if display is active.
+// DisplayBadge returns a checkmark if display is active.
 func (g GPU) DisplayBadge() string {
 	if g.DisplayActive {
-		return "🖥️"
+		return "✓"
 	}
 	return ""
 }
@@ -260,9 +262,30 @@ func queryCUDA(ctx context.Context) (string, error) {
 }
 
 // queryNVCC runs nvcc --version and extracts the compiler release version.
+// Tries PATH first, then /usr/local/cuda*/bin/nvcc (e.g. /usr/local/cuda-13.2/bin/nvcc).
 // Returns an error if nvcc is not found (CUDA Toolkit not installed).
 func queryNVCC(ctx context.Context) (string, error) {
-	cmd := exec.CommandContext(ctx, "nvcc", "--version")
+	var nvccPath string
+
+	// Try PATH first.
+	if path, err := exec.LookPath("nvcc"); err == nil {
+		nvccPath = path
+	} else {
+		// Fallback: scan /usr/local/cuda*/bin/nvcc.
+		matches, _ := filepath.Glob("/usr/local/cuda*/bin/nvcc")
+		for _, m := range matches {
+			if _, err := os.Stat(m); err == nil {
+				nvccPath = m
+				break
+			}
+		}
+	}
+
+	if nvccPath == "" {
+		return "", fmt.Errorf("nvcc not found")
+	}
+
+	cmd := exec.CommandContext(ctx, nvccPath, "--version")
 	out, err := cmd.Output()
 	if err != nil {
 		return "", err
