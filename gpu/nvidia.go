@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"path"
 	"regexp"
 	"strconv"
 	"strings"
@@ -215,6 +216,89 @@ func (g GPU) DisplayBadge() string {
 		return "✓"
 	}
 	return ""
+}
+
+// DisplayConnectedBadge returns a checkmark if a display connector (HDMI, DP, etc.)
+// is physically connected to this GPU. Uses Linux DRM sysfs for detection,
+// which works regardless of terminal environment (tmux, SSH, etc.).
+func DisplayConnectedBadge(gpus []GPU) map[int]string {
+	badges := make(map[int]string, len(gpus))
+
+	// Build a map from normalized PCI bus ID to GPU index.
+	busToIndex := make(map[string]int, len(gpus))
+	for _, g := range gpus {
+		busToIndex[g.BusID()] = g.Index
+	}
+
+	// Find all DRM cards and their connected connectors.
+	cards, err := os.ReadDir("/sys/class/drm")
+	if err != nil {
+		return badges
+	}
+
+	for _, card := range cards {
+		cardName := card.Name()
+		// Match card entries like "card0", "card1", etc.
+		if !strings.HasPrefix(cardName, "card") || strings.Contains(cardName, "-") {
+			continue
+		}
+
+		cardPath := filepath.Join("/sys/class/drm", cardName)
+
+		// Resolve the PCI device path for this card.
+		devicePath, err := filepath.EvalSymlinks(filepath.Join(cardPath, "device"))
+		if err != nil {
+			continue
+		}
+
+		// Extract PCI address from the path, e.g., "0000:01:00.0".
+		pciAddr := path.Base(devicePath)
+		// Normalize to match BusID() output (strip leading zeros).
+		normalizedPCI := normalizePCIForSysfs(pciAddr)
+
+		gpuIdx, ok := busToIndex[normalizedPCI]
+		if !ok {
+			continue
+		}
+
+		// Check all connectors under this card for any "connected" status.
+		connectors, err := os.ReadDir("/sys/class/drm")
+		if err != nil {
+			continue
+		}
+
+		for _, conn := range connectors {
+			connName := conn.Name()
+			if !strings.HasPrefix(connName, cardName+"-") {
+				continue
+			}
+
+			statusPath := filepath.Join("/sys/class/drm", connName, "status")
+			data, err := os.ReadFile(statusPath)
+			if err != nil {
+				continue
+			}
+
+			if strings.TrimSpace(string(data)) == "connected" {
+				badges[gpuIdx] = "✓"
+				break // Found a connected display for this GPU
+			}
+		}
+	}
+
+	return badges
+}
+
+// normalizePCIForSysfs normalizes a PCI address like "0000:01:00.0" to match BusID() output.
+func normalizePCIForSysfs(pciAddr string) string {
+	parts := strings.Split(pciAddr, ":")
+	for i, p := range parts {
+		parts[i] = strings.TrimLeft(p, "0")
+		if parts[i] == "" {
+			parts[i] = "0"
+		}
+	}
+	return strings.Join(parts, ":")
 }
 
 // PCIDisplay returns the current/max PCIe link info (e.g. "x16 Gen4 / x16 Gen4").

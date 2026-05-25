@@ -8,7 +8,7 @@ import (
 )
 
 // BuildMarkdown produces the markdown table from GPU data.
-func BuildMarkdown(gpus []gpu.GPU, makerCache map[int]string, sw gpu.SoftwareInfo) string {
+func BuildMarkdown(gpus []gpu.GPU, makerCache map[int]string, sw gpu.SoftwareInfo, connBadges map[int]string) string {
 	var sb strings.Builder
 
 	sb.WriteString("## 🖥️ GPU Overview\n\n")
@@ -44,13 +44,18 @@ func BuildMarkdown(gpus []gpu.GPU, makerCache map[int]string, sw gpu.SoftwareInf
 		if cc == "" {
 			cc = "N/A"
 		}
+		// Prefer sysfs-based connected badge; fall back to nvidia-smi display_active.
+		displayBadge := connBadges[g.Index]
+		if displayBadge == "" {
+			displayBadge = g.DisplayBadge()
+		}
 		sb.WriteString(fmt.Sprintf(
 			"| **%d** | %s | %s | %s | %s | %s |\n",
 			g.Index,
 			g.Name,
 			maker,
 			cc,
-			g.DisplayBadge(),
+			displayBadge,
 			g.PCIDisplay(),
 		))
 	}

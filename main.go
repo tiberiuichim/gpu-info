@@ -32,7 +32,9 @@ func main() {
 		fmt.Fprintf(os.Stderr, "gpu-info: lspci: %v (proceeding)\n", err)
 	}
 
-	md := render.BuildMarkdown(gpus, makerCache, sw)
+	connBadges := gpu.DisplayConnectedBadge(gpus)
+
+	md := render.BuildMarkdown(gpus, makerCache, sw, connBadges)
 
 	output, err := render.Render(md, *style, *width)
 	if err != nil {
