@@ -13,33 +13,30 @@ func BuildMarkdown(gpus []gpu.GPU, makerCache map[int]string, sw gpu.SoftwareInf
 
 	sb.WriteString("## 🖥️ GPU Overview\n\n")
 
-	// Table header
-	sb.WriteString("| GPU | Model | Mem | Temp | Fan | Util | PState | Power |\n")
-	sb.WriteString("|:-:|:--|:--|:-:|:-:|:-:|:-:|:--|\n")
+	// Table header — thermal / runtime metrics only
+	sb.WriteString("| GPU | Card | Mem | Temp | Fan/Load | Power |\n")
+	sb.WriteString("|:-:|:--|:--|:-:|:-:|:--|\n")
 
 	for _, g := range gpus {
+		card := cardLabel(g.Name, makerCache[g.Index])
+		fanUtil := fmt.Sprintf("%s / %s", g.FanDisplay(), g.UtilizationDisplay())
 		sb.WriteString(fmt.Sprintf(
-			"| **%d** | %s | %s | %s | %s | %s | %s | %s |\n",
+			"| **%d** | %s | %s | %s | %s | %s |\n",
 			g.Index,
-			g.Name,
+			card,
 			g.MemoryDisplay(),
 			g.TemperatureBadge(),
-			g.FanDisplay(),
-			g.UtilizationDisplay(),
-			g.PStateDisplay(),
+			fanUtil,
 			g.PowerDisplay(),
 		))
 	}
 
 	sb.WriteString("\n## 🔧 Hardware\n\n")
-	sb.WriteString("| GPU | Model | Maker | Compute Cap | 🖥️ | PCIe |\n")
-	sb.WriteString("|:-:|:--|:-:|:-:|:-:|:--|\n")
+	sb.WriteString("| GPU | Card | Compute Cap | 🖥️ | PCIe |\n")
+	sb.WriteString("|:-:|:--|:-:|:-:|:--|\n")
 
 	for _, g := range gpus {
-		maker := makerCache[g.Index]
-		if maker == "" {
-			maker = "Unknown"
-		}
+		card := cardLabel(g.Name, makerCache[g.Index])
 		cc := g.ComputeCap
 		if cc == "" {
 			cc = "N/A"
@@ -50,10 +47,9 @@ func BuildMarkdown(gpus []gpu.GPU, makerCache map[int]string, sw gpu.SoftwareInf
 			displayBadge = g.DisplayBadge()
 		}
 		sb.WriteString(fmt.Sprintf(
-			"| **%d** | %s | %s | %s | %s | %s |\n",
+			"| **%d** | %s | %s | %s | %s |\n",
 			g.Index,
-			g.Name,
-			maker,
+			card,
 			cc,
 			displayBadge,
 			g.PCIDisplay(),
@@ -68,4 +64,12 @@ func BuildMarkdown(gpus []gpu.GPU, makerCache map[int]string, sw gpu.SoftwareInf
 	sb.WriteString(fmt.Sprintf("| **CUDA Toolkit** | `%s` |\n", sw.NVCC))
 
 	return sb.String()
+}
+
+// cardLabel returns "Model — Maker" or just "Model" when maker is unknown.
+func cardLabel(model string, maker string) string {
+	if maker == "" || maker == "Unknown" {
+		return model
+	}
+	return fmt.Sprintf("%s — %s", model, maker)
 }
